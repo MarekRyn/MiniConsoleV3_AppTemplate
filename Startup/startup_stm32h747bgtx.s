@@ -70,8 +70,13 @@ LoopFillZerobss:
   .size  appConfig, .-appConfig
 
 appConfig:
-  .word  app_entry
-  .word	 app_main
+  .word  app_entry	// application entry (initialization)
+  .word	 app_main	// application main
+  .space 128		// 128 bytes for additional parameters updated during flashing process (ie home directorey)
+
+
+
+
 
 
 

@@ -10,29 +10,44 @@
  *******************************************************************/
 
 #include "main.h"
+#include "fonts.h"
 
-void * music = NULL;
+static void * RES_THUMB;
 
+// Entry point 1 - Initialization function
 void app_init(void) {
-	BSP_LCD_Init(LCD_COLOR_MODE_ARGB8888, LCD_BUFFER_MODE_TRIPLE, G2D_Color(C_BLUE, 255), NULL);
+	// Setting home directory
+	// This command is valid only when software is loaded through stlink to easy application development
+	// This command is ignored when application is uploaded through bootloader
+	BSP.SetHomeDir("0:/Example/");
 
-	BSP_Res_Init(0xC0000000, 32*1024*1024);
-	music = BSP_Res_Load("alex-productions-efficsounds-energetic-rock-hiking-free-music.mp3");
+	// Initializing graphical interface
+	BSP.LCD_Init(LCD_COLOR_MODE_RGB888, LCD_BUFFER_MODE_DOUBLE, BSP.G2D_Color(C_BLACK, 255), NULL);
+
+	// Initialize resource memory
+	BSP.Res_Init((void *)0xC0000000, 32*1024*1024);
+
+	// Loading resources (thumbnail image)
+	RES_THUMB = BSP.Res_Load("thumbnail.bin");
+
 }
 
+// Entry point 2 - Main function
 void app_main(void) {
-
-	BSP_Audio_LinkSourceMP3(0, music, BSP_Res_GetSize(music));
-	BSP_Audio_SetChannelVolume(0, 128);
-	BSP_Audio_ChannelPLay(0, 1);
 
 	while (1) {
 
-		if (BSP_LCD_FrameReady == 0) continue;
+		// Routines in this section will be executed every time
 
-		G2D_ClearFrame();
-		G2D_DrawFillCircle(100, 100, 50, G2D_Color(C_RED, 255));
-		BSP_LCD_FrameReady();
+		while (!BSP.LCD_GetEditPermission()) continue;
 
+		// Generate frame here
+
+		BSP.G2D_ClearFrame();
+		BSP.G2D_TextBlend(10, 10, FONT_26_verdana,"EXAMPLE APPLICATION", BSP.G2D_Color(C_WHITE, 255));
+		BSP.G2D_DrawBitmapC((uint32_t)RES_THUMB, 400, 240, 320, 200);
+		BSP.LCD_FrameReady();
+
+		// Routines in this section will be executed once per frame
 	}
 }
