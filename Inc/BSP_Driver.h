@@ -118,6 +118,7 @@ typedef struct {
 } TP_GEST;
 
 typedef struct {
+	uint8_t		enabled;
 	uint8_t		raw_data[LCD_TP_REG_TOTAL_LENGTH];
 	uint8_t		touch_count;
 	TP_DATA		touch_data[LCD_TP_DATA_NO];
@@ -410,7 +411,7 @@ typedef struct {
 	/* 0174 */		void (* G2D_CopyBufBlend)(uint32_t src_addr, uint16_t offsline_src, uint16_t x_dest, uint16_t y_dest, uint16_t width, uint16_t height, uint8_t alpha);
 	/* 0175 */		void (* G2D_CacheFrame)(void);
 	/* 0176 */		void (* G2D_RestoreFrame)(void);
-	/* 0177 */		uint32_t *	reserved0177;
+	/* 0177 */		void (* G2D_DrawTileBlendEx)(uint32_t tileset_addr, uint32_t tileset_cols, uint32_t tile_width, uint32_t tile_height, uint32_t tile_col, uint32_t tile_row, int16_t x, int16_t y);
 	/* 0178 */		uint32_t *	reserved0178;
 	/* 0179 */		uint32_t *	reserved0179;
 	/* 0180 */		uint32_t *	reserved0180;
@@ -750,49 +751,45 @@ typedef struct {
 	/* 0510 */		uint32_t *	reserved0510;
 	/* 0511 */		uint32_t *	reserved0511;
 
-	// Remaining pointers
-	/* 0512 */		uint32_t *	reserved0512;
-	/* 0513 */		uint32_t *	reserved0513;
-	/* 0514 */		uint32_t *	reserved0514;
+	// USB Stack
+	/* 0512 */		uint8_t (* USB_MSC_Init)(void);
+	/* 0513 */		uint8_t (* USB_CDC_Init)(void);
+	/* 0514 */		uint8_t ( *USB_HID_Init)(void);
 	/* 0515 */		uint32_t *	reserved0515;
 	/* 0516 */		uint32_t *	reserved0516;
 	/* 0517 */		uint32_t *	reserved0517;
 	/* 0518 */		uint32_t *	reserved0518;
 	/* 0519 */		uint32_t *	reserved0519;
-
-	/* 0520 */		uint32_t *	reserved0520;
-	/* 0521 */		uint32_t *	reserved0521;
-	/* 0522 */		uint32_t *	reserved0522;
+	/* 0520 */		uint8_t (* USB_Disconnect)(void);
+	/* 0521 */		void (* USB_Task)(void);
+	/* 0522 */		uint8_t (* USB_IsConnected)(void);
 	/* 0523 */		uint32_t *	reserved0523;
 	/* 0524 */		uint32_t *	reserved0524;
 	/* 0525 */		uint32_t *	reserved0525;
 	/* 0526 */		uint32_t *	reserved0526;
 	/* 0527 */		uint32_t *	reserved0527;
-	/* 0528 */		uint32_t *	reserved0528;
-	/* 0529 */		uint32_t *	reserved0529;
-
-	/* 0530 */		uint32_t *	reserved0530;
-	/* 0531 */		uint32_t *	reserved0531;
-	/* 0532 */		uint32_t *	reserved0532;
-	/* 0533 */		uint32_t *	reserved0533;
-	/* 0534 */		uint32_t *	reserved0534;
-	/* 0535 */		uint32_t *	reserved0535;
+	/* 0528 */		void (* USB_CDC_RegCbRx)(void * cb);
+	/* 0529 */		void (* USB_CDC_RegCbRxChar)(void * cb, char ch);
+	/* 0530 */		void (* USB_CDC_RegCbTx)(void * cb);
+	/* 0531 */		uint32_t (* USB_CDC_DataAvailable)(void);
+	/* 0532 */		uint32_t (* USB_CDC_Read)(void * buf, uint32_t bufsize);
+	/* 0533 */		uint32_t (* USB_CDC_Write)(void * buf, uint32_t bufsize);
+	/* 0534 */		uint32_t (* USB_CDC_WriteFlush)(void);
+	/* 0535 */		void (* USB_CDC_ReadFlush)(void);
 	/* 0536 */		uint32_t *	reserved0536;
 	/* 0537 */		uint32_t *	reserved0537;
 	/* 0538 */		uint32_t *	reserved0538;
 	/* 0539 */		uint32_t *	reserved0539;
-
 	/* 0540 */		uint32_t *	reserved0540;
 	/* 0541 */		uint32_t *	reserved0541;
 	/* 0542 */		uint32_t *	reserved0542;
 	/* 0543 */		uint32_t *	reserved0543;
-	/* 0544 */		uint32_t *	reserved0544;
-	/* 0545 */		uint32_t *	reserved0545;
-	/* 0546 */		uint32_t *	reserved0546;
-	/* 0547 */		uint32_t *	reserved0547;
-	/* 0548 */		uint32_t *	reserved0548;
+	/* 0544 */		void (* USB_HID_RegCbLeds)(void * cb);
+	/* 0545 */		void (* USB_HID_Mouse)(uint8_t buttons, int8_t dx, int8_t dy, int8_t scrl_dx, int8_t scrl_dy);
+	/* 0546 */		void (* USB_HID_Keyboard)(uint8_t modifier, uint8_t * pkeycodes, uint8_t keycount);
+	/* 0547 */		void (* USB_HID_Gamepad)(uint32_t buttons, uint8_t hat, int8_t x, int8_t y, int8_t z, int8_t rx, int8_t ry, int8_t rz);
+	/* 0548 */		void (* USB_HID_Ctrl)(uint16_t command);
 	/* 0549 */		uint32_t *	reserved0549;
-
 	/* 0550 */		uint32_t *	reserved0550;
 	/* 0551 */		uint32_t *	reserved0551;
 	/* 0552 */		uint32_t *	reserved0552;
@@ -803,7 +800,6 @@ typedef struct {
 	/* 0557 */		uint32_t *	reserved0557;
 	/* 0558 */		uint32_t *	reserved0558;
 	/* 0559 */		uint32_t *	reserved0559;
-
 	/* 0560 */		uint32_t *	reserved0560;
 	/* 0561 */		uint32_t *	reserved0561;
 	/* 0562 */		uint32_t *	reserved0562;
@@ -814,7 +810,6 @@ typedef struct {
 	/* 0567 */		uint32_t *	reserved0567;
 	/* 0568 */		uint32_t *	reserved0568;
 	/* 0569 */		uint32_t *	reserved0569;
-
 	/* 0570 */		uint32_t *	reserved0570;
 	/* 0571 */		uint32_t *	reserved0571;
 	/* 0572 */		uint32_t *	reserved0572;
@@ -825,7 +820,6 @@ typedef struct {
 	/* 0577 */		uint32_t *	reserved0577;
 	/* 0578 */		uint32_t *	reserved0578;
 	/* 0579 */		uint32_t *	reserved0579;
-
 	/* 0580 */		uint32_t *	reserved0580;
 	/* 0581 */		uint32_t *	reserved0581;
 	/* 0582 */		uint32_t *	reserved0582;
@@ -836,7 +830,6 @@ typedef struct {
 	/* 0587 */		uint32_t *	reserved0587;
 	/* 0588 */		uint32_t *	reserved0588;
 	/* 0589 */		uint32_t *	reserved0589;
-
 	/* 0590 */		uint32_t *	reserved0590;
 	/* 0591 */		uint32_t *	reserved0591;
 	/* 0592 */		uint32_t *	reserved0592;
@@ -847,7 +840,6 @@ typedef struct {
 	/* 0597 */		uint32_t *	reserved0597;
 	/* 0598 */		uint32_t *	reserved0598;
 	/* 0599 */		uint32_t *	reserved0599;
-
 	/* 0600 */		uint32_t *	reserved0600;
 	/* 0601 */		uint32_t *	reserved0601;
 	/* 0602 */		uint32_t *	reserved0602;
@@ -858,7 +850,6 @@ typedef struct {
 	/* 0607 */		uint32_t *	reserved0607;
 	/* 0608 */		uint32_t *	reserved0608;
 	/* 0609 */		uint32_t *	reserved0609;
-
 	/* 0610 */		uint32_t *	reserved0610;
 	/* 0611 */		uint32_t *	reserved0611;
 	/* 0612 */		uint32_t *	reserved0612;
@@ -869,7 +860,6 @@ typedef struct {
 	/* 0617 */		uint32_t *	reserved0617;
 	/* 0618 */		uint32_t *	reserved0618;
 	/* 0619 */		uint32_t *	reserved0619;
-
 	/* 0620 */		uint32_t *	reserved0620;
 	/* 0621 */		uint32_t *	reserved0621;
 	/* 0622 */		uint32_t *	reserved0622;
@@ -880,7 +870,6 @@ typedef struct {
 	/* 0627 */		uint32_t *	reserved0627;
 	/* 0628 */		uint32_t *	reserved0628;
 	/* 0629 */		uint32_t *	reserved0629;
-
 	/* 0630 */		uint32_t *	reserved0630;
 	/* 0631 */		uint32_t *	reserved0631;
 	/* 0632 */		uint32_t *	reserved0632;
@@ -891,6 +880,8 @@ typedef struct {
 	/* 0637 */		uint32_t *	reserved0637;
 	/* 0638 */		uint32_t *	reserved0638;
 	/* 0639 */		uint32_t *	reserved0639;
+
+	// Remaining
 
 	/* 0640 */		uint32_t *	reserved0640;
 	/* 0641 */		uint32_t *	reserved0641;
@@ -1317,7 +1308,7 @@ typedef struct {
 
 } BSP_Driver_TypeDef;
 
-extern BSP_DRIVER BSP_Driver_TypeDef	BSP;
+extern BSP_Driver_TypeDef	* BSP;
 
 
 #endif /* BSP_DRIVER_H_ */

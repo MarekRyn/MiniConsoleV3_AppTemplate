@@ -7,4 +7,4 @@
 
 #include "../Inc/BSP_Driver.h"
 
-BSP_DRIVER BSP_Driver_TypeDef	BSP;
+BSP_Driver_TypeDef * BSP = (BSP_Driver_TypeDef *)0x08000400;
