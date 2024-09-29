@@ -16,6 +16,24 @@
 
 app_entry:
 
+/* Copy selected program routines from flash to ITCMRAM */
+  ldr r0, =_sitcmram
+  ldr r1, =_eitcmram
+  ldr r2, =_siitcmram
+  movs r3, #0
+  b LoopCopyITCInit
+
+CopyITCInit:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopyITCInit:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopyITCInit
+
+
 /* Copy the data segment initializers from flash to SRAM */
   ldr r0, =_sdata
   ldr r1, =_edata
@@ -32,6 +50,24 @@ LoopCopyDataInit:
   adds r4, r0, r3
   cmp r4, r1
   bcc CopyDataInit
+
+/* Copy selected data from flash to DTCMRAM */
+  ldr r0, =_sdtcmram
+  ldr r1, =_edtcmram
+  ldr r2, =_sidtcmram
+  movs r3, #0
+  b LoopCopyDTCInit
+
+CopyDTCInit:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopyDTCInit:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopyDTCInit
+
 /* Zero fill the bss segment. */
   ldr r2, =_sbss
   ldr r4, =_ebss

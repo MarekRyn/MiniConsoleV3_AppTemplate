@@ -1,9 +1,14 @@
-/*
- * BSP_Driver.h
+/*****************************************************************
+ * MiniConsole V3 - BSP Drivers
  *
- *  Created on: May 29, 2024
- *      Author: marek
- */
+ * Author: Marek Ryn
+ * Version: 1.0
+ *
+ * Changelog:
+ *
+ * - 0.1b	- Development version
+ * - 1.0	- First stable release
+ *******************************************************************/
 
 #ifndef BSP_DRIVER_H_
 #define BSP_DRIVER_H_
@@ -13,8 +18,18 @@
 #include <stdint.h>
 
 // Driver constants
-#define BSP_DRIVER	__attribute__((section(".dtc_mram")))
+#define DTC_MRAM	__attribute__((section(".dtc_mram")))
+#define ITC_MRAM	__attribute__((section(".itc_mram")))
+#define SH0_RAM		__attribute__((section(".sh0_ram")))
+#define SH1_RAM		__attribute__((section(".sh1_ram")))
 
+// Optimization level
+#define OPT_O0		__attribute__((optimize("O0")))
+#define OPT_O1		__attribute__((optimize("O1")))
+#define OPT_O2		__attribute__((optimize("O2")))
+#define OPT_O3		__attribute__((optimize("O3")))
+
+// Return values
 #define BSP_OK		0
 #define BSP_ERROR	1
 #define BSP_BUSY	2
@@ -218,6 +233,178 @@ enum AUDIO_STATUS {
 };
 
 
+// BSP structures - FATFS
+
+/* File access mode and open method flags (3rd argument of f_open) */
+#define	FA_READ				0x01
+#define	FA_WRITE			0x02
+#define	FA_OPEN_EXISTING	0x00
+#define	FA_CREATE_NEW		0x04
+#define	FA_CREATE_ALWAYS	0x08
+#define	FA_OPEN_ALWAYS		0x10
+#define	FA_OPEN_APPEND		0x30
+
+/* Fast seek controls (2nd argument of f_lseek) */
+#define CREATE_LINKMAP	((FSIZE_t)0 - 1)
+
+/* Format options (2nd argument of f_mkfs) */
+#define FM_FAT		0x01
+#define FM_FAT32	0x02
+#define FM_EXFAT	0x04
+#define FM_ANY		0x07
+#define FM_SFD		0x08
+
+/* Filesystem type (FATFS.fs_type) */
+#define FS_FAT12	1
+#define FS_FAT16	2
+#define FS_FAT32	3
+#define FS_EXFAT	4
+
+/* File attribute bits for directory entry (FILINFO.fattrib) */
+#define	AM_RDO	0x01	/* Read only */
+#define	AM_HID	0x02	/* Hidden */
+#define	AM_SYS	0x04	/* System */
+#define AM_DIR	0x10	/* Directory */
+#define AM_ARC	0x20	/* Archive */
+
+typedef uint32_t		UINT;	/* int must be 16-bit or 32-bit */
+typedef uint8_t			BYTE;	/* char must be 8-bit */
+typedef uint16_t		WORD;	/* 16-bit unsigned integer */
+typedef uint32_t		DWORD;	/* 32-bit unsigned integer */
+typedef uint64_t		QWORD;	/* 64-bit unsigned integer */
+typedef uint16_t		WCHAR;	/* UTF-16 character type */
+typedef char 			TCHAR;
+typedef QWORD 			FSIZE_t;
+typedef DWORD 			LBA_t;
+
+
+/* Filesystem object structure (FATFS) */
+
+#define FF_MAX_SS		4096
+#define FF_SFN_BUF		12
+#define FF_LFN_BUF		255
+
+typedef struct {
+	BYTE	fs_type;		/* Filesystem type (0:not mounted) */
+	BYTE	pdrv;			/* Volume hosting physical drive */
+	BYTE	ldrv;			/* Logical drive number (used only when FF_FS_REENTRANT) */
+	BYTE	n_fats;			/* Number of FATs (1 or 2) */
+	BYTE	wflag;			/* win[] status (b0:dirty) */
+	BYTE	fsi_flag;		/* FSINFO status (b7:disabled, b0:dirty) */
+	WORD	id;				/* Volume mount ID */
+	WORD	n_rootdir;		/* Number of root directory entries (FAT12/16) */
+	WORD	csize;			/* Cluster size [sectors] */
+	WORD	ssize;			/* Sector size (512, 1024, 2048 or 4096) */
+	WCHAR*	lfnbuf;			/* LFN working buffer */
+	BYTE*	dirbuf;			/* Directory entry block scratchpad buffer for exFAT */
+	DWORD	last_clst;		/* Last allocated cluster */
+	DWORD	free_clst;		/* Number of free clusters */
+	DWORD	cdir;			/* Current directory start cluster (0:root) */
+	DWORD	cdc_scl;		/* Containing directory start cluster (invalid when cdir is 0) */
+	DWORD	cdc_size;		/* b31-b8:Size of containing directory, b7-b0: Chain status */
+	DWORD	cdc_ofs;		/* Offset in the containing directory (invalid when cdir is 0) */
+	DWORD	n_fatent;		/* Number of FAT entries (number of clusters + 2) */
+	DWORD	fsize;			/* Number of sectors per FAT */
+	LBA_t	volbase;		/* Volume base sector */
+	LBA_t	fatbase;		/* FAT base sector */
+	LBA_t	dirbase;		/* Root directory base sector (FAT12/16) or cluster (FAT32/exFAT) */
+	LBA_t	database;		/* Data base sector */
+	LBA_t	bitbase;		/* Allocation bitmap base sector */
+	LBA_t	winsect;		/* Current sector appearing in the win[] */
+	BYTE	win[FF_MAX_SS];	/* Disk access window for Directory, FAT (and file data at tiny cfg) */
+} FATFS;
+
+
+/* Object ID and allocation information (FFOBJID) */
+
+typedef struct {
+	FATFS*	fs;				/* Pointer to the hosting volume of this object */
+	WORD	id;				/* Hosting volume's mount ID */
+	BYTE	attr;			/* Object attribute */
+	BYTE	stat;			/* Object chain status (b1-0: =0:not contiguous, =2:contiguous, =3:fragmented in this session, b2:sub-directory stretched) */
+	DWORD	sclust;			/* Object data start cluster (0:no cluster or root directory) */
+	FSIZE_t	objsize;		/* Object size (valid when sclust != 0) */
+	DWORD	n_cont;			/* Size of first fragment - 1 (valid when stat == 3) */
+	DWORD	n_frag;			/* Size of last fragment needs to be written to FAT (valid when not zero) */
+	DWORD	c_scl;			/* Containing directory start cluster (valid when sclust != 0) */
+	DWORD	c_size;			/* b31-b8:Size of containing directory, b7-b0: Chain status (valid when c_scl != 0) */
+	DWORD	c_ofs;			/* Offset in the containing directory (valid when file object and sclust != 0) */
+	UINT	lockid;			/* File lock ID origin from 1 (index of file semaphore table Files[]) */
+} FFOBJID;
+
+/* File object structure (FIL) */
+
+typedef struct {
+	FFOBJID	obj;			/* Object identifier (must be the 1st member to detect invalid object pointer) */
+	BYTE	flag;			/* File status flags */
+	BYTE	err;			/* Abort flag (error code) */
+	FSIZE_t	fptr;			/* File read/write pointer (Zeroed on file open) */
+	DWORD	clust;			/* Current cluster of fpter (invalid when fptr is 0) */
+	LBA_t	sect;			/* Sector number appearing in buf[] (0:invalid) */
+	LBA_t	dir_sect;		/* Sector number containing the directory entry (not used at exFAT) */
+	BYTE*	dir_ptr;		/* Pointer to the directory entry in the win[] (not used at exFAT) */
+	DWORD*	cltbl;			/* Pointer to the cluster link map table (nulled on open, set by application) */
+	BYTE	buf[FF_MAX_SS];	/* File private data read/write window */
+} FIL;
+
+
+typedef struct {
+	FFOBJID	obj;			/* Object identifier */
+	DWORD	dptr;			/* Current read/write offset */
+	DWORD	clust;			/* Current cluster */
+	LBA_t	sect;			/* Current sector (0:Read operation has terminated) */
+	BYTE*	dir;			/* Pointer to the directory item in the win[] */
+	BYTE	fn[12];			/* SFN (in/out) {body[8],ext[3],status[1]} */
+	DWORD	blk_ofs;		/* Offset of current entry block being processed (0xFFFFFFFF:Invalid) */
+//	const TCHAR* pat;		/* Pointer to the name matching pattern */
+} DIR;
+
+
+typedef struct {
+	FSIZE_t	fsize;			/* File size */
+	WORD	fdate;			/* Modified date */
+	WORD	ftime;			/* Modified time */
+	BYTE	fattrib;		/* File attribute */
+	TCHAR	altname[FF_SFN_BUF + 1];/* Alternative file name */
+	TCHAR	fname[FF_LFN_BUF + 1];	/* Primary file name */
+//	TCHAR	fname[12 + 1];	/* File name */
+} FILINFO;
+
+
+typedef struct {
+	BYTE fmt;			/* Format option (FM_FAT, FM_FAT32, FM_EXFAT and FM_SFD) */
+	BYTE n_fat;			/* Number of FATs */
+	UINT align;			/* Data area alignment (sector) */
+	UINT n_root;		/* Number of root directory entries */
+	DWORD au_size;		/* Cluster size (byte) */
+} MKFS_PARM;
+
+
+typedef enum {
+	FR_OK = 0,				/* (0) Succeeded */
+	FR_DISK_ERR,			/* (1) A hard error occurred in the low level disk I/O layer */
+	FR_INT_ERR,				/* (2) Assertion failed */
+	FR_NOT_READY,			/* (3) The physical drive cannot work */
+	FR_NO_FILE,				/* (4) Could not find the file */
+	FR_NO_PATH,				/* (5) Could not find the path */
+	FR_INVALID_NAME,		/* (6) The path name format is invalid */
+	FR_DENIED,				/* (7) Access denied due to prohibited access or directory full */
+	FR_EXIST,				/* (8) Access denied due to prohibited access */
+	FR_INVALID_OBJECT,		/* (9) The file/directory object is invalid */
+	FR_WRITE_PROTECTED,		/* (10) The physical drive is write protected */
+	FR_INVALID_DRIVE,		/* (11) The logical drive number is invalid */
+	FR_NOT_ENABLED,			/* (12) The volume has no work area */
+	FR_NO_FILESYSTEM,		/* (13) There is no valid FAT volume */
+	FR_MKFS_ABORTED,		/* (14) The f_mkfs() aborted due to any problem */
+	FR_TIMEOUT,				/* (15) Could not get a grant to access the volume within defined period */
+	FR_LOCKED,				/* (16) The operation is rejected according to the file sharing policy */
+	FR_NOT_ENOUGH_CORE,		/* (17) LFN working buffer could not be allocated */
+	FR_TOO_MANY_OPEN_FILES,	/* (18) Number of open files > FF_FS_LOCK */
+	FR_INVALID_PARAMETER	/* (19) Given parameter is invalid */
+} FRESULT;
+
+
+
 
 /*********************************************************/
 /* DRIVER API                                            */
@@ -261,7 +448,7 @@ typedef struct {
 	/* 0028 */		uint32_t *	reserved0028;
 	/* 0029 */		uint32_t *	reserved0029;
 	/* 0030 */		uint32_t *	reserved0030;
-	/* 0031 */		uint32_t *	reserved0031;
+	/* 0031 */		uint8_t (* Serial_Transmit)(uint8_t * pData, uint32_t Size);
 
 	// LCD & Touch Panel Library
 	/* 0032 */		void (* LCD_Init)(uint8_t color_mode, uint8_t buffer_mode, uint32_t bgcolor, uint32_t *clut);
@@ -272,9 +459,9 @@ typedef struct {
 	/* 0037 */		void (* LCD_BacklLightOff)(void);
 	/* 0038 */		void (* LCD_BackLightOn)(void);
 	/* 0039 */		uint32_t (* LCD_GetFrameTime)(void);
-	/* 0040 */		uint32_t *	reserved0040;
-	/* 0041 */		uint32_t *	reserved0041;
-	/* 0042 */		uint32_t *	reserved0042;
+	/* 0040 */		void (* LCD_UpdateCLUT)(uint32_t *clut);
+	/* 0041 */		void * (* LCD_GetEditFrameAddr)(void);
+	/* 0042 */		void (* LCD_SetDisplayWindow)(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 	/* 0043 */		uint32_t *	reserved0043;
 	/* 0044 */		uint32_t *	reserved0044;
 	/* 0045 */		uint32_t *	reserved0045;
@@ -296,12 +483,12 @@ typedef struct {
 	/* 0061 */		uint32_t *	reserved0061;
 	/* 0062 */		uint32_t *	reserved0062;
 	/* 0063 */		uint32_t *	reserved0063;
-	/* 0064 */		uint32_t *	reserved0064;
-	/* 0065 */		uint32_t *	reserved0065;
-	/* 0066 */		uint32_t *	reserved0066;
-	/* 0067 */		uint32_t *	reserved0067;
-	/* 0068 */		uint32_t *	reserved0068;
-	/* 0069 */		uint32_t *	reserved0069;
+	/* 0064 */		uint8_t (* LCD_TP_RegisterArea)(uint8_t areaid, uint16_t x, uint16_t y, uint16_t width, uint16_t height, void* callback);
+	/* 0065 */		uint8_t (* LCD_TP_RemoveArea)(uint8_t areaid);
+	/* 0066 */		uint8_t (* LCD_TP_RemoveAreaRange)(uint8_t aid_start, uint8_t aid_stop);
+	/* 0067 */		uint8_t (* LCD_TP_RemoveAllAreas)(void);
+	/* 0068 */		uint8_t	(* LCD_TP_Enable)(void);
+	/* 0069 */		uint8_t (* LCD_TP_Disable)(void);
 	/* 0070 */		uint32_t *	reserved0070;
 	/* 0071 */		uint32_t *	reserved0071;
 	/* 0072 */		uint32_t *	reserved0072;
@@ -328,23 +515,25 @@ typedef struct {
 	/* 0093 */		uint32_t *	reserved0093;
 	/* 0094 */		uint32_t *	reserved0094;
 	/* 0095 */		uint32_t *	reserved0095;
-	/* 0096 */		uint32_t *	reserved0096;
-	/* 0097 */		uint32_t *	reserved0097;
-	/* 0098 */		uint32_t *	reserved0098;
-	/* 0099 */		uint32_t *	reserved0099;
-	/* 0100 */		uint32_t *	reserved0100;
-	/* 0101 */		uint32_t *	reserved0101;
-	/* 0102 */		uint32_t *	reserved0102;
-	/* 0103 */		uint32_t *	reserved0103;
-	/* 0104 */		uint32_t *	reserved0104;
-	/* 0105 */		uint32_t *	reserved0105;
-	/* 0106 */		uint32_t *	reserved0106;
-	/* 0107 */		uint32_t *	reserved0107;
-	/* 0108 */		uint32_t *	reserved0108;
-	/* 0109 */		uint32_t *	reserved0109;
-	/* 0110 */		uint32_t *	reserved0110;
-	/* 0111 */		uint32_t *	reserved0111;
-	/* 0112 */		uint32_t *	reserved0112;
+
+	// Video Library
+	/* 0096 */		uint8_t (* Video_Init)(char * filename, uint8_t * pVideoBuffer, uint32_t VideoBufferSize);
+	/* 0097 */		uint8_t (* Video_GetFrame)(void);
+	/* 0098 */		uint8_t (* Video_DeInit)(void);
+	/* 0099 */		uint8_t (* Video_Seek)(uint32_t frame);
+	/* 0100 */		uint8_t (* Video_Rev)(uint32_t delta);
+	/* 0101 */		uint8_t (* Video_Fwd)(uint32_t delta);
+	/* 0102 */		uint8_t (* Video_Play)(void);
+	/* 0103 */		uint8_t (* Video_Stop)(void);
+	/* 0104 */		uint8_t (* Video_Pause)(void);
+	/* 0105 */		uint8_t (* Video_SetVolume)(uint8_t vol);
+	/* 0106 */		uint8_t (* Video_DrawFrame)(int16_t x, int16_t y);
+	/* 0107 */		uint8_t (* Video_DrawFrameC)(int16_t x, int16_t y);
+	/* 0108 */		uint32_t (* Video_GetTotalFrames)(void);
+	/* 0109 */		uint32_t (* Video_GetCurrentFrame)(void);
+	/* 0110 */		uint32_t (* Video_GetWidth)(void);
+	/* 0111 */		uint32_t (* Video_GetHeight)(void);
+	/* 0112 */		uint32_t (* Video_GetFrameRate)(void);
 	/* 0113 */		uint32_t *	reserved0113;
 	/* 0114 */		uint32_t *	reserved0114;
 	/* 0115 */		uint32_t *	reserved0115;
@@ -396,11 +585,11 @@ typedef struct {
 	/* 0159 */		void (* G2D_DrawIconBlendC)(uint32_t iconsource, int16_t x, int16_t y, uint32_t color);
 	/* 0160 */		uint16_t (* G2D_GetIconHeight)(uint32_t iconsource);
 	/* 0161 */		uint16_t (* G2D_GetIconWidth)(uint32_t iconsource);
-	/* 0162 */		void (* G2D_DrawJPEG)(uint32_t jpeg_addr, uint32_t jpeg_size, int16_t x, int16_t y);
-	/* 0163 */		void (* G2D_DrawJPEGC)(uint32_t jpeg_addr, uint32_t jpeg_size, int16_t x, int16_t y);
+	/* 0162 */		void (* G2D_DrawJPEG)(void * jpeg_addr, uint32_t jpeg_size, int16_t x, int16_t y);
+	/* 0163 */		void (* G2D_DrawJPEGC)(void * jpeg_addr, uint32_t jpeg_size, int16_t x, int16_t y);
 	/* 0164 */		void (* G2D_DrawLastJPEG)(int16_t x, int16_t y);
 	/* 0165 */		void (* G2D_DrawLastJPEGC)(int16_t x, int16_t y);
-	/* 0166 */		void (* G2D_DecodeJPEG)(uint32_t jpeg_addr, uint32_t jpeg_size);
+	/* 0166 */		void (* G2D_DecodeJPEG)(void * jpeg_addr, uint32_t jpeg_size);
 	/* 0167 */		void (* G2D_DrawTile)(uint32_t tileset_addr, uint32_t tileset_cols, uint32_t tile_width, uint32_t tile_height, uint32_t tile_col, uint32_t tile_row, int16_t x, int16_t y);
 	/* 0168 */		void (* G2D_DrawTileC)(uint32_t tileset_addr, uint32_t tileset_cols, uint32_t tile_width, uint32_t tile_height, uint32_t tile_col, uint32_t tile_row, int16_t x, int16_t y);
 	/* 0169 */		void (* G2D_DrawTileBlend)(uint32_t tileset_addr, uint32_t tileset_cols, uint32_t tile_width, uint32_t tile_height, uint32_t tile_col, uint32_t tile_row, int16_t x, int16_t y);
@@ -411,7 +600,7 @@ typedef struct {
 	/* 0174 */		void (* G2D_CopyBufBlend)(uint32_t src_addr, uint16_t offsline_src, uint16_t x_dest, uint16_t y_dest, uint16_t width, uint16_t height, uint8_t alpha);
 	/* 0175 */		void (* G2D_CacheFrame)(void);
 	/* 0176 */		void (* G2D_RestoreFrame)(void);
-	/* 0177 */		void (* G2D_DrawTileBlendEx)(uint32_t tileset_addr, uint32_t tileset_cols, uint32_t tile_width, uint32_t tile_height, uint32_t tile_col, uint32_t tile_row, int16_t x, int16_t y);
+	/* 0177 */		uint32_t *	reserved0177;
 	/* 0178 */		uint32_t *	reserved0178;
 	/* 0179 */		uint32_t *	reserved0179;
 	/* 0180 */		uint32_t *	reserved0180;
@@ -503,10 +692,10 @@ typedef struct {
 	/* 0264 */		uint8_t (* Audio_SetChannelVolumeLR)(uint8_t chno, uint8_t volume_L, uint8_t volume_R);
 	/* 0265 */		uint8_t (* Audio_IncChannelVolume)(uint8_t chno, uint8_t delta);
 	/* 0266 */		uint8_t (* Audio_DecChannelVolume)(uint8_t chno, uint8_t delta);
-	/* 0267 */		uint32_t *	reserved0267;
+	/* 0267 */		uint8_t (* Audio_LinkSourceMID)(uint8_t chno, void * sfaddr, uint32_t sfsize, void * addr, uint32_t size);
 	/* 0268 */		uint8_t (* Audio_LinkSourceMP3)(uint8_t chno, void * addr, uint32_t size);
 	/* 0269 */		uint8_t (* Audio_LinkSourceMOD)(uint8_t chno, void * addr, uint32_t size);
-	/* 0270 */		uint8_t (* Audio_LinkSourceRAW)(uint8_t chno, void * addr, uint32_t size);
+	/* 0270 */		uint8_t (* Audio_LinkSourceRAW)(uint8_t chno, void * addr, uint32_t size, uint8_t chn, uint8_t bitformat, uint16_t freq);
 	/* 0271 */		uint8_t (* Audio_ChannelPLay)(uint8_t chno, uint8_t repeat);
 	/* 0272 */		uint8_t (* Audio_ChannelStop)(uint8_t chno);
 	/* 0273 */		uint8_t (* Audio_ChannelPause)(uint8_t chno);
@@ -686,30 +875,31 @@ typedef struct {
 	/* 0445 */		uint32_t *	reserved0445;
 	/* 0446 */		uint32_t *	reserved0446;
 	/* 0447 */		uint32_t *	reserved0447;
-	/* 0448 */		uint32_t *	reserved0448;
-	/* 0449 */		uint32_t *	reserved0449;
-	/* 0450 */		uint32_t *	reserved0450;
-	/* 0451 */		uint32_t *	reserved0451;
-	/* 0452 */		uint32_t *	reserved0452;
-	/* 0453 */		uint32_t *	reserved0453;
-	/* 0454 */		uint32_t *	reserved0454;
-	/* 0455 */		uint32_t *	reserved0455;
-	/* 0456 */		uint32_t *	reserved0456;
-	/* 0457 */		uint32_t *	reserved0457;
+
+	/* 0448 */		FRESULT (* f_open)(FIL* fp, const TCHAR* path, BYTE mode);
+	/* 0449 */		FRESULT (* f_close)(FIL* fp);
+	/* 0450 */		FRESULT (* f_read)(FIL* fp, void* buff, UINT btr, UINT* br);
+	/* 0451 */		FRESULT (* f_write)(FIL* fp, const void* buff, UINT btw, UINT* bw);
+	/* 0452 */		FRESULT (* f_lseek)(FIL* fp, FSIZE_t ofs);
+	/* 0453 */		FRESULT (* f_truncate)(FIL* fp);
+	/* 0454 */		FRESULT (* f_sync)(FIL* fp);
+	/* 0455 */		FRESULT (* f_opendir)(DIR* dp, const TCHAR* path);
+	/* 0456 */		FRESULT (* f_closedir)(DIR* dp);
+	/* 0457 */		FRESULT (* f_readdir)(DIR* dp, FILINFO* fno);
 	/* 0458 */		uint32_t *	reserved0458;
 	/* 0459 */		uint32_t *	reserved0459;
-	/* 0460 */		uint32_t *	reserved0460;
-	/* 0461 */		uint32_t *	reserved0461;
-	/* 0462 */		uint32_t *	reserved0462;
-	/* 0463 */		uint32_t *	reserved0463;
+	/* 0460 */		FRESULT (* f_mkdir)(const TCHAR* path);
+	/* 0461 */		FRESULT (* f_unlink)(const TCHAR* path);
+	/* 0462 */		FRESULT (* f_rename)(const TCHAR* path_old, const TCHAR* path_new);
+	/* 0463 */		FRESULT (* f_stat)(const TCHAR* path, FILINFO* fno);
 	/* 0464 */		uint32_t *	reserved0464;
 	/* 0465 */		uint32_t *	reserved0465;
 	/* 0466 */		uint32_t *	reserved0466;
 	/* 0467 */		uint32_t *	reserved0467;
 	/* 0468 */		uint32_t *	reserved0468;
 	/* 0469 */		uint32_t *	reserved0469;
-	/* 0470 */		uint32_t *	reserved0470;
-	/* 0471 */		uint32_t *	reserved0471;
+	/* 0470 */		FRESULT (* f_getfree)(const TCHAR* path, DWORD* nclst, FATFS** fatfs);
+	/* 0471 */		FRESULT (* f_getlabel)(const TCHAR* path, TCHAR* label, DWORD* vsn);
 	/* 0472 */		uint32_t *	reserved0472;
 	/* 0473 */		uint32_t *	reserved0473;
 	/* 0474 */		uint32_t *	reserved0474;
@@ -717,10 +907,10 @@ typedef struct {
 	/* 0476 */		uint32_t *	reserved0476;
 	/* 0477 */		uint32_t *	reserved0477;
 	/* 0478 */		uint32_t *	reserved0478;
-	/* 0479 */		uint32_t *	reserved0479;
-	/* 0480 */		uint32_t *	reserved0480;
-	/* 0481 */		uint32_t *	reserved0481;
-	/* 0482 */		uint32_t *	reserved0482;
+	/* 0479 */		int (* f_putc)(TCHAR c, FIL* fp);
+	/* 0480 */		int (* f_puts)(const TCHAR* str, FIL* cp);
+	/* 0481 */		int (* f_printf)(FIL* fp, const TCHAR* str, ...);
+	/* 0482 */		TCHAR* (* f_gets)(TCHAR* buff, int len, FIL* fp);
 	/* 0483 */		uint32_t *	reserved0483;
 	/* 0484 */		uint32_t *	reserved0484;
 	/* 0485 */		uint32_t *	reserved0485;

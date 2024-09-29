@@ -13,11 +13,11 @@
 /* Entry Point */
 ENTRY(app_entry)
 
-/* Highest address of the user mode stack */
-_estack = ORIGIN(APP_RAM) + LENGTH(APP_RAM); 
+/* All stack parameteres are handled by firmware. App is sharing stack with firmware */
 
-_Min_Heap_Size = 0x200; /* required amount of heap  */
-_Min_Stack_Size = 0x1000; /* required amount of stack */
+
+_Min_Heap_Size = 0x200; /* required for complier to check if enough APP_RAM is available */
+_max_heap =  ORIGIN(APP_RAM) + LENGTH(APP_RAM); /* heap can extend up to end of APP_RAM */
 
 /* Memories definition */
 MEMORY
@@ -60,6 +60,19 @@ SECTIONS
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
   } >APP_FLASH
+
+
+  /* Used by the startup to initialize copy routine*/
+  _siitcmram = LOADADDR(.itc_mram);
+
+  /* The program routines to be located in ITCMRAM and executed from this memory */
+  .itc_mram : {
+  	. = ALIGN(4);
+  	_sitcmram = .;        /* create a global symbol at data start */
+  	*(.itc_mram)			  /* program routines to copy to ITCMRAM */
+    . = ALIGN(4);
+    _eitcmram = .;        /* define a global symbol at data end */
+  } >ITCMRAM AT> APP_FLASH 
 
   /* Constant data into "APP_FLASH" memory */
   .rodata :
@@ -129,6 +142,19 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
   } >APP_RAM AT> APP_FLASH
+  
+  
+  /* Used by the startup to initialize copy routine*/
+  _sidtcmram = LOADADDR(.dtc_mram);
+
+  /* The program data to be located in DTCMRAM and accessed from this memory */
+  .dtc_mram : {
+  	. = ALIGN(4);
+  	_sdtcmram = .;        /* create a global symbol at data start */
+  	*(.dtc_mram)			  /* program routines to copy to DTCMRAM */
+    . = ALIGN(4);
+    _edtcmram = .;        /* define a global symbol at data end */
+  } >DTCMRAM AT> APP_FLASH 
 
   /* Uninitialized data section into "OS_RAM" memory */
   . = ALIGN(4);
@@ -153,16 +179,8 @@ SECTIONS
     PROVIDE ( end = . );
     PROVIDE ( _end = . );
     . = . + _Min_Heap_Size;
-    . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >APP_RAM
-
-  /* The program data to be located in DTCMRAM and accessed from this memory */
-  .dtc_mram : {
-  	. = ALIGN(4);
-  	*(.dtc_mram)			  /* program routines to copy to DTCMRAM */
-    . = ALIGN(4);
-  } >DTCMRAM
 
   /* Uninitialized data section into "SH0_RAM" shared memory */
   .sh0_ram :
