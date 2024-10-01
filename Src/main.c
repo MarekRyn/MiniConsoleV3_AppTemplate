@@ -51,14 +51,13 @@ void app_main(void) {
 	while (1) {
 
 		// Routines in this section will be executed every time
-		BSP->Video_GetFrame();
 
 		while (!BSP->LCD_GetEditPermission()) continue;
 
 		// Generate frame here
 		BSP->G2D_ClearFrame();
 		BSP->G2D_TextBlend(10, 10, FONT_26_verdana,"EXAMPLE APPLICATION", BSP->G2D_Color(C_WHITE, 255));
-		BSP->G2D_DrawBitmapC((uint32_t)RES_THUMB, 400, 240, 320, 200);
+		BSP->G2D_DrawBitmapC(RES_THUMB, 400, 240, 320, 200);
 		BSP->LCD_FrameReady();
 
 		// Routines in this section will be executed once per frame
