@@ -441,8 +441,8 @@ typedef struct {
 	/* 0021 */		uint8_t (* RTC_GetDate)(uint16_t * pyear, uint8_t * pmonth, uint8_t * pday, uint8_t * pweekday);
 	/* 0022 */		uint8_t (* RTC_GetTime)(uint8_t * phour, uint8_t * pminute, uint8_t * psecond);
 	/* 0023 */		int32_t (* RTC_GetUnixTimestamp)(void);
-	/* 0024 */		uint32_t *	reserved0024;
-	/* 0025 */		uint32_t *	reserved0025;
+	/* 0024 */		uint8_t	(* BSP_OSD_ShowNotification)(char * str);
+	/* 0025 */		uint8_t	(* BSP_OSD_ShowAlert)(char * str);
 	/* 0026 */		uint32_t *	reserved0026;
 	/* 0027 */		uint32_t *	reserved0027;
 	/* 0028 */		uint32_t *	reserved0028;
@@ -713,12 +713,12 @@ typedef struct {
 	/* 0285 */		uint32_t *	reserved0285;
 	/* 0286 */		uint32_t *	reserved0286;
 	/* 0287 */		uint32_t *	reserved0287;
-	/* 0288 */		uint32_t *	reserved0288;
-	/* 0289 */		uint32_t *	reserved0289;
+	/* 0288 */		uint8_t (* Audio_LinkSourceSMP3)(uint8_t chno);
+	/* 0289 */		uint8_t (* Audio_LinkSourceSRAW)(uint8_t chno, uint8_t chn, uint8_t bitformat, uint16_t freq);
 	/* 0290 */		uint32_t *	reserved0290;
 	/* 0291 */		uint32_t *	reserved0291;
-	/* 0292 */		uint32_t *	reserved0292;
-	/* 0293 */		uint32_t *	reserved0293;
+	/* 0292 */		void * (* Audio_GetBufAddr)(uint8_t chno, uint32_t size);
+	/* 0293 */		uint8_t (* Audio_BufUpdateCompleted)(uint8_t chno);
 	/* 0294 */		uint32_t *	reserved0294;
 	/* 0295 */		uint32_t *	reserved0295;
 	/* 0296 */		uint32_t *	reserved0296;
